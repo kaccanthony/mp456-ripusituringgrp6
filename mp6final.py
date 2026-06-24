@@ -411,6 +411,7 @@ class App:
         header("4. Update Project Status")
         id_str = prompt("Enter Project ID")
         p = self._find_project_by_id(id_str)
+
         if p is None:
             print("  Project not found.")
             pause()
@@ -419,6 +420,7 @@ class App:
         print()
         display_project(p)
         separator()
+
         print("  Select Status:\n")
         print("    1. Pending")
         print("    2. In Progress")
@@ -427,20 +429,51 @@ class App:
         choice = prompt("\n  Choice")
         status_map = {"1": "Pending", "2": "In Progress", "3": "Completed"}
         new_status = status_map.get(choice)
+
         if new_status is None:
             print("  Invalid choice.")
             pause()
             return
 
+        if new_status == p.status:
+            print("\n  No changes made.")
+            pause()
+            return
+
         if confirm(f"Set status to '{new_status}'? (Y/N)"):
-            p.status = new_status
             if new_status == "Completed":
                 p.progress = 100
-            self._rebuild_and_save_schedule()
-            FileManager.save_projects(self.projects)
-            print(f"\n  Status updated to '{new_status}'. Schedule updated.")
+
+                cp = CompletedProject(
+                    p.id_number,
+                    p.title,
+                    p.size,
+                    p.priority,
+                    p.due_date,
+                    date.today()
+                )
+
+                self.completed.append(cp)
+                del self.projects[p.id_number]
+
+                FileManager.save_completed(self.completed)
+                FileManager.save_projects(self.projects)
+
+                self._rebuild_and_save_schedule()
+
+                print(f"\n  Project {p.id_number} moved to Completed Projects.")
+
+            else:
+                p.status = new_status
+
+                FileManager.save_projects(self.projects)
+                self._rebuild_and_save_schedule()
+
+                print(f"\n  Status updated to '{new_status}'. Schedule updated.")
+
         else:
-            print("  No changes made.")
+            print("\n  No changes made.")
+
         pause()
 
     #  OPTION 5 – VIEW PROJECTS
